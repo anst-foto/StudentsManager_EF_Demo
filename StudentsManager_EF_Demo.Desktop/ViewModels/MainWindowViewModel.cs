@@ -1,121 +1,111 @@
 ﻿using System.Collections.ObjectModel;
-using System.Windows.Input;
+using System.Reactive;
+using System.Reactive.Linq;
 using Microsoft.EntityFrameworkCore;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using StudentsManager_EF_Demo.Desktop.Models;
 using AppContext = StudentsManager_EF_Demo.Desktop.Models.AppContext;
 
 namespace StudentsManager_EF_Demo.Desktop.ViewModels;
 
-public class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly AppContext _db;
 
-    private int? _id;
+    [Reactive] private int? _id;
 
-    public int? Id
-    {
-        get => _id;
-        set => SetProperty(ref _id, value);
-    }
+    [Reactive] private string? _lastName;
 
-    private string? _lastName;
+    [Reactive] private string? _firstName;
 
-    public string? LastName
-    {
-        get => _lastName;
-        set => SetProperty(ref _lastName, value);
-    }
+    [Reactive] private string? _faculty;
 
-    private string? _firstName;
-
-    public string? FirstName
-    {
-        get => _firstName;
-        set => SetProperty(ref _firstName, value);
-    }
-
-    private string? _faculty;
-
-    public string? Faculty
-    {
-        get => _faculty;
-        set => SetProperty(ref _faculty, value);
-    }
 
     public ObservableCollection<Student> Students { get; } = [];
 
-    private Student? _selectedStudent;
+    [Reactive] private Student? _selectedStudent;
+    
 
-    public Student? SelectedStudent
-    {
-        get => _selectedStudent;
-        set
-        {
-            var res = SetProperty(ref _selectedStudent, value);
-            if (!res) return;
-
-            Id = value?.Id;
-            LastName = value?.LastName;
-            FirstName = value?.FirstName;
-            Faculty = value?.Faculty;
-        }
-    }
-
-    private string? _searchText;
-
-    public string? SearchText
-    {
-        get => _searchText;
-        set => SetProperty(ref _searchText, value);
-    }
-
-    public ICommand CommandLoad { get; }
-    public ICommand CommandSave { get; }
-    public ICommand CommandDelete { get; }
-    public ICommand CommandClear { get; }
-    public ICommand CommandSearch { get; }
-    public ICommand CommandClearSearch { get; }
+    [Reactive] private string? _searchText;
+    
+    
+    public ReactiveCommand<Unit, Unit> CommandSave { get; }
+    public ReactiveCommand<Unit, Unit> CommandDelete { get; }
+    public ReactiveCommand<Unit, Unit> CommandClear { get; }
 
     public MainWindowViewModel()
     {
         _db = new AppContext();
 
-        CommandClear = new LambdaCommand(
-            execute: _ => Clear(),
-            canExecute: _ => !string.IsNullOrWhiteSpace(LastName) ||
-                             !string.IsNullOrWhiteSpace(FirstName) ||
-                             !string.IsNullOrWhiteSpace(Faculty));
-        CommandLoad = new LambdaCommand(_ => Load());
-        CommandSearch = new LambdaCommand(
-            execute: _ => Search(),
-            canExecute: _ => !string.IsNullOrWhiteSpace(SearchText));
-        CommandClearSearch = new LambdaCommand(
-            execute: _ =>
+        this.WhenAnyValue(vm => vm.SelectedStudent)
+            .Subscribe(s =>
             {
-                SearchText = null;
-                Load();
-            },
-            canExecute: _ => !string.IsNullOrWhiteSpace(SearchText));
-        CommandSave = new LambdaCommand(
-            execute: _ => Save(),
-            canExecute: _ => !string.IsNullOrWhiteSpace(LastName) &&
-                             !string.IsNullOrWhiteSpace(FirstName) &&
-                             !string.IsNullOrWhiteSpace(Faculty));
-        CommandDelete = new LambdaCommand(
-            execute: _ => Delete(),
-            canExecute: _ => SelectedStudent != null);
+                Id = s?.Id;
+                LastName = s?.LastName;
+                FirstName = s?.FirstName;
+                Faculty = s?.Faculty;
+            });
+        this.WhenAnyValue(vm => vm.SearchText)
+            .Select(query => query?.Trim())
+            .WhereNotNull()
+            .Subscribe(search =>
+            {
+                var students = _db.Students.Where(s =>
+                    s.LastName.ToLower().Contains(search.ToLower()) ||
+                    s.FirstName.ToLower().Contains(search.ToLower()) ||
+                    s.Faculty.ToLower().Contains(search.ToLower()));
+        
+                Students.Clear();
+                foreach (var student in students)
+                {
+                    Students.Add(student);
+                }
+            });
+
+        var canExecuteCommandClear = 
+            this.WhenAnyValue(vm => vm.LastName,
+                vm => vm.FirstName, 
+                vm => vm.Faculty,
+                (p1, p2, p3) => !string.IsNullOrWhiteSpace(p1) ||
+                                !string.IsNullOrWhiteSpace(p2) || 
+                                !string.IsNullOrWhiteSpace(p3));
+        var canExecuteCommandSave = 
+            this.WhenAnyValue(vm => vm.LastName, 
+                vm => vm.FirstName, 
+                vm => vm.Faculty,
+                (p1, p2, p3) => !string.IsNullOrWhiteSpace(p1) &&
+                                !string.IsNullOrWhiteSpace(p2) && 
+                                !string.IsNullOrWhiteSpace(p3));
+        var canExecuteCommandDelete = 
+            this.WhenAnyValue(
+                vm => vm.Id,
+                vm => vm.SelectedStudent,
+                (p1, p2) => p1 is not null || p2 is not null);
+
+        CommandClear = ReactiveCommand.Create(
+            execute: Clear,
+            canExecute: canExecuteCommandClear );
+        
+        CommandSave = ReactiveCommand.Create(
+            execute: Save,
+            canExecute: canExecuteCommandSave);
+        CommandDelete = ReactiveCommand.Create(
+            execute: Delete,
+            canExecute: canExecuteCommandDelete);
     }
 
     private void Clear()
     {
         SelectedStudent = null;
 
-        LastName = null;
+        _lastName = null;
         FirstName = null;
         Faculty = null;
         Id = null;
     }
 
+    [ReactiveCommand]
     private void Load()
     {
         _db.Students.Load();
@@ -127,36 +117,21 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void Search()
-    {
-        //TODO: Разобраться почему не работает Contains() с CurrentCultureIgnoreCase
-        var students = _db.Students.Where(s =>
-            s.LastName.ToLower().Contains(SearchText!.ToLower()) ||
-            s.FirstName.ToLower().Contains(SearchText!.ToLower()) ||
-            s.Faculty.ToLower().Contains(SearchText!.ToLower()));
-        
-        Students.Clear();
-        foreach (var student in students)
-        {
-            Students.Add(student);
-        }
-    }
-
     private void Save()
     {
-        if (Id == null)
+        if (_id == null)
         {
             _db.Students.Add(new Student
             {
-                LastName = LastName!,
+                LastName = _lastName!,
                 FirstName = FirstName!, 
                 Faculty = Faculty!
             });
         }
         else
         {
-            var student = _db.Students.Single(s => s.Id == Id);
-            student.LastName = LastName!;
+            var student = _db.Students.Single(s => s.Id == _id);
+            student.LastName = _lastName!;
             student.FirstName = FirstName!;
             student.Faculty = Faculty!;
         }
@@ -169,7 +144,7 @@ public class MainWindowViewModel : ViewModelBase
 
     private void Delete()
     {
-        var student = _db.Students.Single(s => s.Id == Id);
+        var student = _db.Students.Single(s => s.Id == _id);
         _db.Students.Remove(student);
         _db.SaveChanges();
         

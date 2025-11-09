@@ -28,7 +28,7 @@
     
     <Window.InputBindings>
         <KeyBinding Modifiers="Control" Key="L"
-                    Command="{Binding Path=CommandLoad}"/>
+                    Command="{Binding Path=LoadCommand}"/>
         <KeyBinding Modifiers="Control" Key="S"
                     Command="{Binding Path=CommandSave}"/>
     </Window.InputBindings>
@@ -36,7 +36,7 @@
     <DockPanel LastChildFill="True">
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="Загрузить" 
-                      Command="{Binding Path=CommandLoad}"/>
+                      Command="{Binding Path=LoadCommand}"/>
         </Menu>
         
         <StackPanel Orientation="Horizontal"
@@ -44,10 +44,6 @@
             <c:InputComponent Label="Поиск"
                               Value="{Binding Path=SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                               Width="350"/>
-            <Button Content="Найти"
-                    Command="{Binding Path=CommandSearch}"/>
-            <Button Content="Очистить поиск"
-                    Command="{Binding Path=CommandClearSearch}"/>
         </StackPanel>
         
         <Grid>
