@@ -129,10 +129,11 @@ public class MainWindowViewModel : ViewModelBase
 
     private void Search()
     {
-        var students = _db.Students.Where(s => s.LastName.Contains(SearchText!) ||
-                                s.FirstName.Contains(SearchText!) ||
-                                s.Faculty.Contains(SearchText!))
-            .ToList();
+        //TODO: Разобраться почему не работает Contains() с CurrentCultureIgnoreCase
+        var students = _db.Students.Where(s =>
+            s.LastName.ToLower().Contains(SearchText!.ToLower()) ||
+            s.FirstName.ToLower().Contains(SearchText!.ToLower()) ||
+            s.Faculty.ToLower().Contains(SearchText!.ToLower()));
         
         Students.Clear();
         foreach (var student in students)
