@@ -1,0 +1,87 @@
+﻿<Window x:Class="StudentsManager_EF_Demo.Desktop.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:StudentsManager_EF_Demo.Desktop.ViewModels"
+        xmlns:c="clr-namespace:StudentsManager_EF_Demo.Desktop.Components"
+        xmlns:m="clr-namespace:StudentsManager_EF_Demo.Desktop.Models"
+        
+        Title="MainWindow" 
+        
+        Height="450" Width="800">
+     <Window.DataContext>
+        <vm:MainWindowViewModel/>
+    </Window.DataContext>
+    
+    <Window.Resources>
+        <DataTemplate x:Key="Template_Student"
+                      DataType="{x:Type TypeName=m:Student}">
+            <TextBlock>
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="#{0}: {1}">
+                        <Binding Path="Id"/>
+                        <Binding Path="FullNameWithInitials"/>
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+        </DataTemplate>
+    </Window.Resources>
+    
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control" Key="L"
+                    Command="{Binding Path=CommandLoad}"/>
+        <KeyBinding Modifiers="Control" Key="S"
+                    Command="{Binding Path=CommandSave}"/>
+    </Window.InputBindings>
+    
+    <DockPanel LastChildFill="True">
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="Загрузить" 
+                      Command="{Binding Path=CommandLoad}"/>
+        </Menu>
+        
+        <StackPanel Orientation="Horizontal"
+                    DockPanel.Dock="Top">
+            <c:InputComponent Label="Поиск"
+                              Value="{Binding Path=SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              Width="350"/>
+            <Button Content="Найти"
+                    Command="{Binding Path=CommandSearch}"/>
+            <Button Content="Очистить поиск"
+                    Command="{Binding Path=CommandClearSearch}"/>
+        </StackPanel>
+        
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+        
+            <ListBox ItemsSource="{Binding Path=Students}"
+                     SelectedItem="{Binding Path=SelectedStudent}"
+                     SelectionMode="Single"
+                     ItemTemplate="{StaticResource ResourceKey=Template_Student}"
+                     Grid.Column="0"/>
+        
+            <StackPanel Grid.Column="1">
+                <c:InputComponent Label="ID"
+                                  Value="{Binding Path=Id, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
+                                  IsReadOnly="True"/>
+                <c:InputComponent Label="Фамилия"
+                                  Value="{Binding Path=LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <c:InputComponent Label="Имя"
+                                  Value="{Binding Path=FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <c:InputComponent Label="Факультет"
+                                  Value="{Binding Path=Faculty, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Сохранить"
+                            Command="{Binding Path=CommandSave}"/>
+                    <Button Content="Удалить"
+                            Command="{Binding Path=CommandDelete}"/>
+                    <Button Content="Очистить"
+                            Command="{Binding Path=CommandClear}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>
